@@ -35,4 +35,4 @@ VOLUME /var/lib/docker
 # group. Needed to access the docker daemon's unix socket.
 RUN usermod -a -G docker jenkins
 
-ENTRYPOINT ["entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
