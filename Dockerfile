@@ -6,37 +6,33 @@
 # Following the best practices outlined in:
 #   http://jonathan.bergknoff.com/journal/building-good-docker-images
 
-FROM evarga/jenkins-slave
+FROM jenkins/ssh-slave
 
-ENV DEBIAN_FRONTEND noninteractive
+ARG DOCKER_VERSION=5:19.03.1~3-0~debian-stretch
+ARG DEBIAN_FRONTEND=noninteractive
 
-# Adapted from: https://registry.hub.docker.com/u/jpetazzo/dind/dockerfile/
-# Let's start with some basic stuff.
 RUN apt-get update -qq && apt-get install -qqy \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    software-properties-common && \
-    rm -rf /var/lib/apt/lists/*
+  apt-transport-https \
+  ca-certificates \
+  curl \
+  software-properties-common && \
+  rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add --no-tty -
 RUN add-apt-repository \
-    "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-    $(lsb_release -cs) \
-    stable"
+  "deb [arch=amd64] https://download.docker.com/linux/debian \
+  $(lsb_release -cs) \
+  stable"
 # Install Docker from Docker Inc. repositories.
-RUN apt-get update -qq && apt-get install -qqy docker-ce=17.09.0~ce-0~ubuntu && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -qq && apt-get install -y docker-ce=${DOCKER_VERSION} docker-ce-cli=${DOCKER_VERSION} containerd.io && rm -rf /var/lib/apt/lists/*
 
-ADD wrapdocker /usr/local/bin/wrapdocker
-RUN chmod +x /usr/local/bin/wrapdocker
+COPY setup-docker /usr/local/bin/setup-docker
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod 555 /usr/local/bin/setup-docker /entrypoint.sh
 VOLUME /var/lib/docker
-
 
 # Make sure that the "jenkins" user from evarga's image is part of the "docker"
 # group. Needed to access the docker daemon's unix socket.
 RUN usermod -a -G docker jenkins
 
-
-# place the jenkins slave startup script into the container
-ADD jenkins-slave-startup.sh /
-CMD ["/jenkins-slave-startup.sh"]
+ENTRYPOINT ["entrypoint.sh"]
